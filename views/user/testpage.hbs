@@ -1,0 +1,311 @@
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flower Classifier</title>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+        .background-video {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        }
+        .title {
+            font-family: 'Great Vibes', cursive;
+            font-size: 5rem;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.6);
+            position: relative;
+            top: -180px;
+        }
+        .upload-container {
+            position: relative;
+            z-index: 1;
+            margin-top: -100px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        .btn {
+            font-size: 1rem;
+            padding: 10px 20px;
+            font-weight: 600;
+            border: none;
+            border-radius: 7px;
+            background-color: #98d646;
+            color: white;
+            cursor: pointer;
+            font-family: 'Roboto', sans-serif;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+        }
+        .btn:hover {
+            background-color: #7dac40;
+        }
+        .image-preview {
+            margin-top: 20px;
+            max-width: 400px;
+            max-height: 400px;
+            border: 2px solid white;
+            border-radius: 10px;
+            object-fit: cover;
+            box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
+        #loading-indicator{
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            z-index: 2001;
+        }
+
+        #loading-indicator p{
+            margin: 10px 0;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        #loading-indicator .spinner{
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        } 
+
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 2000;
+            display: none;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 10px;
+            width: 100%;
+            text-align: center;
+            font-size: 1rem;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7);
+            z-index: 9999; /* Ensure it stays above the overlay */
+        }
+    </style>
+</head>
+<body>
+    <div id="overlay"></div>
+    <video class="background-video" autoplay muted loop>
+        <source src="/images/flower.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+    <div class="title">Flower Classifier</div>
+    <div class="upload-container">
+        <input id="imageInput" type="file" accept="image/*" style="display: none;" onchange="previewImage(event)">
+        <div id="buttonGroup" class="button-group">
+            <button id="uploadButton" class="btn" onclick="document.getElementById('imageInput').click()">Upload Image</button>
+        </div>
+        <img id="imagePreview" class="image-preview" src="" alt="Image Preview" style="display: none;">
+    </div>
+
+    <div id="loading-indicator">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+    </div>
+
+    <div class="footer">
+        Created by Anandhu ©
+    </div>
+
+
+    <script>
+        function previewImage(event) {
+            const input = event.target;
+            const preview = document.getElementById('imagePreview');
+            const buttonGroup = document.getElementById('buttonGroup');
+            
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Change buttons to "Cancel" and "Send"
+                    buttonGroup.innerHTML = `
+                        <button class="btn" onclick="cancelSelection()">Cancel</button>
+                        <button class="btn" onclick="sendImage()">Send</button>
+                    `;
+                };
+                reader.readAsDataURL(input.files[0]); // This converts the image to base64 format
+            }
+        }
+
+        function cancelSelection() {
+            const input = document.getElementById('imageInput');
+            const preview = document.getElementById('imagePreview');
+            const buttonGroup = document.getElementById('buttonGroup');
+
+            input.value = ""; // Clear the file input
+            preview.src = "";
+            preview.style.display = "none";
+
+            // Restore the original "Upload" button
+            buttonGroup.innerHTML = `
+                <button id="uploadButton" class="btn" onclick="document.getElementById('imageInput').click()">Upload Image</button>
+            `;
+        }
+
+        function sendImage() {
+            const input = document.getElementById('imageInput');
+            const preview = document.getElementById('imagePreview');
+
+            if (input.files && input.files[0]) {
+                showLoadingIndicator()
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    const base64Image = e.target.result;  // This is the base64 string of the image
+
+                    // Send the base64 image to the server
+                    fetch('/get_image', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ image: base64Image }), // Sending image as base64 in JSON
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.prediction) {
+                            showPopup(data.prediction, preview.src); // Show popup with prediction and image
+                            hideLoadingIndicator()
+                        } else {
+                            hideLoadingIndicator()
+                            alert('Failed to classify the image.');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error sending image:', error);
+                        alert('An error occurred while sending the image.');
+                    });
+                };
+
+                reader.readAsDataURL(input.files[0]);  // Convert the image to base64
+            }
+        }
+
+        function showPopup(prediction, imageSrc) {
+            const popup = document.createElement('div');
+            popup.style.position = 'fixed';
+            popup.style.top = '50%';
+            popup.style.left = '50%';
+            popup.style.transform = 'translate(-50%, -50%)';
+            popup.style.padding = '20px';
+            popup.style.backgroundColor = 'white';
+            popup.style.borderRadius = '10px';
+            popup.style.boxShadow = '0 4px 8px rgba(0, 0, 0, 0.2)';
+            popup.style.zIndex = '9999';
+            popup.style.textAlign = 'center';
+
+            const img = document.createElement('img');
+            img.src = imageSrc;
+            img.style.maxWidth = '100%';
+            img.style.borderRadius = '10px';
+            img.style.marginBottom = '10px';
+            popup.appendChild(img);
+
+            const text = document.createElement('p');
+            text.textContent = `Prediction: ${prediction}`;
+            text.style.fontSize = '1.2rem';
+            text.style.fontWeight = 'bold';
+            text.style.color = 'black';
+            text.style.fontFamily = "'Roboto', sans-serif";
+            text.style.marginBottom = '20px';
+            popup.appendChild(text);
+
+            // Add the close button
+            const closeButton = document.createElement('button');
+            closeButton.textContent = 'Close';
+            closeButton.style.padding = '10px 20px';
+            closeButton.style.fontSize = '1rem';
+            closeButton.style.border = 'none';
+            closeButton.style.borderRadius = '5px';
+            closeButton.style.backgroundColor = '#98d646';
+            closeButton.style.color = 'white';
+            closeButton.style.cursor = 'pointer';
+            closeButton.addEventListener('click', () => {
+                popup.remove(); // Remove the popup
+                cancelSelection(); // Reset the page to the initial state
+            });
+            popup.appendChild(closeButton);
+
+            // Add the popup to the document
+            document.body.appendChild(popup);
+        }
+
+        function showLoadingIndicator() {
+            document.getElementById('loading-indicator').style.display = 'block';
+            showOverlay();
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideLoadingIndicator() {
+            document.getElementById('loading-indicator').style.display = 'none';
+            hideOverlay();
+            document.body.style.overflow = 'auto';
+        }
+
+        function showOverlay() {
+            document.getElementById('overlay').style.display = 'block';
+        }
+
+        function hideOverlay() {
+            document.getElementById('overlay').style.display = 'none';
+        }
+
+        function closePopupSeeMore() {
+            document.getElementById("seemore_popup").style.display = "none";
+            var overlay = document.getElementById('see_more_popup_overlay')
+            if (overlay) {
+                overlay.remove();
+            }
+            chatContainer.style.overflow = "auto";
+        }
+    </script>
+</body>
